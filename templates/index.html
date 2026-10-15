@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>حکم آنلاین</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- لابی -->
+    <section id="lobby" class="screen">
+      <h1>🃏 حکم آنلاین</h1>
+      <p class="sub">۲ تا ۴ نفره — روی یک شبکه یا اینترنت</p>
+
+      <div class="card-box">
+        <label>نام شما</label>
+        <input id="playerName" type="text" maxlength="16" placeholder="مثلاً علی" value="" />
+      </div>
+
+      <div class="card-box">
+        <label>تعداد بازیکن (اتاق جدید)</label>
+        <select id="maxPlayers">
+          <option value="4">۴ نفره (تیمی)</option>
+          <option value="3">۳ نفره</option>
+          <option value="2">۲ نفره</option>
+        </select>
+      </div>
+
+      <button id="btnCreate" class="btn primary">ساخت اتاق</button>
+
+      <div class="divider">یا</div>
+
+      <div class="card-box">
+        <label>کد اتاق</label>
+        <input id="roomCode" type="text" maxlength="5" placeholder="مثلاً A3K9P" style="text-transform:uppercase" />
+      </div>
+      <button id="btnJoin" class="btn">ورود به اتاق</button>
+
+      <p id="lobbyError" class="error"></p>
+    </section>
+
+    <!-- اتاق انتظار -->
+    <section id="waiting" class="screen hidden">
+      <h2>اتاق <span id="waitCode"></span></h2>
+      <p class="sub">کد را بفرست · روی صندلی خالی بزن تا جایت را انتخاب کنی</p>
+
+      <!-- تیم ۰: صندلی ۰ و ۲ -->
+      <div class="team-block team-gold-bg" id="teamBlock0">
+        <div class="team-head">
+          <input type="text" id="teamName0" class="team-name-input" maxlength="20" value="تیم طلایی" />
+          <button type="button" class="btn-tiny" id="btnSaveTeam0">ذخیره نام تیم</button>
+        </div>
+        <p class="team-hint">این دو نفر هم‌تیمی‌اند (روبه‌روی هم روی میز)</p>
+        <div class="seat-row">
+          <button type="button" class="seat-btn" data-seat="0">
+            <span class="sb-label">صندلی ۱</span>
+            <span class="sb-name">خالی</span>
+            <span class="sb-action">برای نشستن لمس کن</span>
+          </button>
+          <button type="button" class="seat-btn" data-seat="2">
+            <span class="sb-label">صندلی ۳</span>
+            <span class="sb-name">خالی</span>
+            <span class="sb-action">برای نشستن لمس کن</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- تیم ۱: صندلی ۱ و ۳ -->
+      <div class="team-block team-blue-bg" id="teamBlock1">
+        <div class="team-head">
+          <input type="text" id="teamName1" class="team-name-input" maxlength="20" value="تیم آبی" />
+          <button type="button" class="btn-tiny" id="btnSaveTeam1">ذخیره نام تیم</button>
+        </div>
+        <p class="team-hint">این دو نفر هم‌تیمی‌اند (روبه‌روی هم روی میز)</p>
+        <div class="seat-row">
+          <button type="button" class="seat-btn" data-seat="1">
+            <span class="sb-label">صندلی ۲</span>
+            <span class="sb-name">خالی</span>
+            <span class="sb-action">برای نشستن لمس کن</span>
+          </button>
+          <button type="button" class="seat-btn" data-seat="3">
+            <span class="sb-label">صندلی ۴</span>
+            <span class="sb-name">خالی</span>
+            <span class="sb-action">برای نشستن لمس کن</span>
+          </button>
+        </div>
+      </div>
+
+      <p id="waitMsg" class="msg"></p>
+      <p id="waitError" class="error"></p>
+      <button id="btnStart" class="btn primary hidden">شروع بازی</button>
+      <button id="btnCopy" class="btn small">کپی کد اتاق</button>
+    </section>
+
+    <!-- بازی -->
+    <section id="game" class="screen hidden">
+      <header class="topbar">
+        <div class="score">
+          <span id="scoreLine"></span>
+        </div>
+        <div class="info">
+          <span id="modeLine"></span>
+          <span id="trumpLine"></span>
+        </div>
+      </header>
+
+      <div class="table">
+        <div class="seat seat-top" data-seat="2">
+          <div class="pname"></div>
+          <div class="pcards"></div>
+          <div class="played-slot"></div>
+        </div>
+        <div class="seat seat-left" data-seat="1">
+          <div class="pname"></div>
+          <div class="pcards"></div>
+          <div class="played-slot"></div>
+        </div>
+        <div class="seat seat-right" data-seat="3">
+          <div class="pname"></div>
+          <div class="pcards"></div>
+          <div class="played-slot"></div>
+        </div>
+        <div class="seat seat-bottom" data-seat="0">
+          <div class="pname"></div>
+          <div class="played-slot"></div>
+        </div>
+      </div>
+
+      <div id="hakemReveal" class="hakem-bar hidden"></div>
+      <p id="gameMsg" class="msg"></p>
+      <div id="myHand" class="hand"></div>
+
+      <!-- انتخاب حالت -->
+      <div id="modePanel" class="overlay hidden">
+        <div class="panel">
+          <h3>انتخاب حالت</h3>
+          <p class="hint">نرس و تک‌نرس بدون خال حکم هستند</p>
+          <button class="btn mode-btn" data-mode="حکم معمولی">حکم معمولی</button>
+          <button class="btn mode-btn" data-mode="نرس">نرس</button>
+          <button class="btn mode-btn" data-mode="تک‌نرس">تک‌نرس</button>
+        </div>
+      </div>
+
+      <!-- انتخاب حکم -->
+      <div id="trumpPanel" class="overlay hidden">
+        <div class="panel">
+          <h3>انتخاب خال حکم</h3>
+          <button class="btn trump-btn" data-suit="♠">پیک ♠</button>
+          <button class="btn trump-btn" data-suit="♥">دل ♥</button>
+          <button class="btn trump-btn" data-suit="♦">خشت ♦</button>
+          <button class="btn trump-btn" data-suit="♣">گشنیز ♣</button>
+        </div>
+      </div>
+
+      <div id="gameOver" class="overlay hidden">
+        <div class="panel">
+          <h2>پایان بازی</h2>
+          <p id="winnerText"></p>
+          <button class="btn primary" onclick="location.reload()">بازی جدید</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="/static/game.js"></script>
+</body>
+</html>
